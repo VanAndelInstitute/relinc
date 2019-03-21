@@ -1,4 +1,5 @@
 library(testthat)
-library(MyR6Lib)
+library(relinc)
+library(redux)
 
-test_check("MyR6Lib")
+test_check("relinc")

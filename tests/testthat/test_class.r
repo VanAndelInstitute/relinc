@@ -1,8 +1,10 @@
 context("Class instantiation")
 test_that("Object can be created", {
   skip_if_devel()
-  myObj <- MyR6Class$new(1, 2)
-  expect_is(myObj,  "MyR6Class")
+  with_mock(
+        redis_available = function(host, port) {TRUE},
+        hiredis = function(host, port){TRUE},
+        expect_is(Relincr$new(),  "Relincr"))
 })
 
 # add more tests here, or more tests in additional r scripts

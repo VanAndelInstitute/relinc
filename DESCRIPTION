@@ -1,18 +1,28 @@
-Package: MyR6Lib
-Title: Skeleton for library based on R6 class(es)
+Package: relinc
+Title: Reposition Drugs to Target Genes
 Version: 0.99.0
 Author: Eric J. Kort
 Maintainer: Eric J. Kort  <eric.kort@vai.org>
-Description: Contains templates for R6 class, roxgen-based documentation, and testing.
+Description: Identified drugs that can reverse or mimic knockdown or over-
+             expression of specific genes, to potential therapeutic benefit.
 Depends: R (>= 3.5.0)
 Imports:
-    R6
+    R6,
+    doMC,
+    parallel,
+    slinky,
+    redux
 Suggests:
     testthat,
     knitr,
     rmarkdown
 Collate:
-    'myr6.r'
+    'relinc.r'
+    'redis.r'
+    'slinky.r'
+    'internals.r'
+    'internals_redis.r'
+    'internals_slinky.r'
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
