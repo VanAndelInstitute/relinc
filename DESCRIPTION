@@ -1,0 +1,22 @@
+Package: MyR6Lib
+Title: Skeleton for library based on R6 class(es)
+Version: 0.99.0
+Author: Eric J. Kort
+Maintainer: Eric J. Kort  <eric.kort@vai.org>
+Description: Contains templates for R6 class, roxgen-based documentation, and testing.
+Depends: R (>= 3.5.0)
+Imports:
+    R6
+Suggests:
+    testthat,
+    knitr,
+    rmarkdown
+Collate:
+    'myr6.r'
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.1.1
+Roxygen: list(markdown = TRUE)
+biocViews: BiomedicalInformatics
+VignetteBuilder: knitr

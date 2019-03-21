@@ -1,0 +1,24 @@
+---
+title: "MyR6Class"
+author: "Me"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+    %\VignetteIndexEntry{MyR6Class}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+    collapse = TRUE,
+    comment = "#>"
+)
+```
+
+Welcome to MyR6Class.  This is a skeleton for creating new packages based on 
+R6.
+
+Remember to keep your lines < 80 characters long and use 4 space indents to 
+keep BiocCheck happy.
+
