@@ -21,7 +21,6 @@ Collate:
     'redis.r'
     'slinky.r'
     'internals.r'
-    'internals_redis.r'
     'internals_slinky.r'
 License: GPL-3
 Encoding: UTF-8

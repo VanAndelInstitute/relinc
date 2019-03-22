@@ -32,8 +32,8 @@ Relincr$set("public", "approved_drugs", function() {
     perts <- perts[which(perts %in% metadata(private$sl)$pert_iname)]
 
     ob <- system.file("extdata",
-                      "orange_book_products.txt",
-                      package = "rlinc")
+                      "orange_book_products.txt.gz",
+                      package = "relinc")
 
     orange_book <- read.delim(ob,
                               sep = "~",

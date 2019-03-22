@@ -57,7 +57,11 @@ Relincr$set("public", "write_record", function(key, value) {
 NULL
 
 Relincr$set("public", "fetch_record", function(key) {
-    string_to_object(private$redis_con$GET(key))
+    con <- hiredis(host = private$CONFIG$REDIS_HOST,
+                   port = private$CONFIG$REDIS_PORT)
+    rec <- con$GET(key)
+    rm(con)
+    string_to_object(rec)
 })
 
 
@@ -84,7 +88,10 @@ Relincr$set("public", "fetch_record", function(key) {
 NULL
 
 Relincr$set("public", "fetch_records", function(keys) {
-    recs <- private$redis_con$MGET(keys)
+    con <- hiredis(host = private$CONFIG$REDIS_HOST,
+                          port = private$CONFIG$REDIS_PORT)
+    recs <- con$MGET(keys)
+    rm(con)
     ix <- which(!sapply(recs, is.null))
     if(!length(ix)) {
         return(NA)

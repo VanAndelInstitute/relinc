@@ -37,7 +37,6 @@ Relincr <- R6::R6Class(
     public = list(
         initialize = function(interactive = TRUE) {
             private$CONFIG <- .check_config()
-            private$connect_redis()
         },
         add = function() {
             return(self$a + self$b)
@@ -49,6 +48,17 @@ Relincr <- R6::R6Class(
         redis_con = NA
     )
 )
+
+Relincr$set("private", "logger", function(level='INFO',
+                                          log,
+                                          file="log.txt") {
+    log <- paste0(timestamp(prefix = paste0(level, " : "),
+                            suffix = " : ",
+                            quiet = TRUE), log)
+    write(log, file, append = TRUE)
+    invisible(self)
+})
+
 
 #' Create configuration file
 #'

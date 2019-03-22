@@ -56,3 +56,4 @@
 .init_cluster <- function() {
     registerDoMC(detectCores() - 1)
 }
+
