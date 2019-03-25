@@ -21,6 +21,7 @@
 #' @name ks_pert
 NULL
 #' @import slinky
+#' @import foreach
 Relincr$set("public", "ks_pert", function(name, type="trt_cp") {
     dat <- self$fetch_by_pert(name, type)
 
@@ -59,6 +60,7 @@ Relincr$set("public", "ks_pert", function(name, type="trt_cp") {
 #' @name ks_rand
 NULL
 #' @import slinky
+#' @import foreach
 Relincr$set("public", "ks_rand", function(n, type="trt_cp") {
     dat <- self$fetch_rand(n, type)
 
