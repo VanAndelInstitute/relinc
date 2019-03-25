@@ -1,0 +1,126 @@
+---
+title: "Guided Analyais"
+author: "Eric J. Kort"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Guided Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+Identifying drugs targeting specific gene perturbations is facilitated by 
+the `relinc` and `slinky` packages.  This document describes how to conduct 
+such an analysis.
+
+## Pre-requisites.
+
+The relinc package is designed to expedite analysis by storing zscores 
+on a redis server.  Do not open your redis server to the world.  If working 
+on AWS, open port 6379 only to other servers within a specified security 
+group.  Use similar strategies in other environments to keep your redis 
+instance behind a firewall.  If you do not, you will find your redis server 
+hacked within minutes.
+
+```bash
+sudo apt-get -y install redis-server
+```
+
+Make sure the redis-server is configured to store the snapshot somewhere 
+with enough room (the default location is fine if your root drive had 50GB or
+so free), and to allow connections from outside (by commenting out the "bind" 
+line in the network section of redis.conf) if you are going to use 
+separate servers to do the analysis (see below).  Remember, "outside" means 
+"other servers in your security group or behind your firewall", not the 
+entire world.
+
+Significance testing requires boostrapping large number of samples, and thus 
+having many cores is desirable.  For example, we use 100,000 boostrapped 
+samples for gene significance testing, which takes about 8 hours with 16 
+cores. If you are working in the cloud, you may not want to keep such a beefy 
+server running all the time. The recommended approach is to have your 
+redis server on a smaller server (a couple of processors and 30GB of RAM is 
+recommended) which you leave running until prolonged periods of downtime 
+are anticipated, and then one or more larger multi-core servers in the same 
+security group when you are actively selecting drugs.
+
+This analysis requires the latest versions of `relinc` and `slinky`.
+
+```{r eval=FALSE}
+devtools::install_github("vanandelinstitute\slinky")
+devtools::install_github("vanandelinstitute\relinc")
+```
+
+The analysis also requires the LINCS L1000 data files (expression data and 
+instance "info").  These need to be fetched and stored somewhere memorable 
+that has enough room for them.  Once you have loaded the z-scores, you no 
+longer need the expression data file.
+
+```bash
+mkdir data
+cd data
+wget ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE92nnn/GSE92742/suppl/GSE92742_Broad_LINCS_Level3_INF_mlr12k_n1319138x12328.gctx.gz
+wget ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE92nnn/GSE92742/suppl/GSE92742_Broad_LINCS_inst_info.txt.gz
+gunzip GSE92742_Broad_LINCS_Level3_INF_mlr12k_n1319138x12328.gctx.gz
+```
+
+## Calculating zscores
+
+Once your redis server is up and running, you can configure the client and 
+calculate and store  robust zscores as follows.  The first command will prompt
+you for details about the location of your redis server and data files.  You 
+will also be prompted to save this information so you do not need to enter it 
+each time.
+
+```{r eval=FALSE}
+library(relinc)
+rl <- Relincr(interactive = TRUE)
+rl$zscore_all_drugs()
+rl$zscore_all_genes()
+
+```
+
+That will take quite a while--several hours or so, depending on how many cores
+you have. Note that the you will experience diminishing returns at this step 
+with lots of cores, since this requires calls to the clue.io api to identify 
+appropriate control samples for each instance.  Relincr throttles these 
+requests to to more than 1 every 2 seconds (even if using multiple cores). 
+Since calculating the zscores also take a short bit of time, this is more 
+efficient if you have multiple cores, but probably having more than 4-8 cores 
+will not help any.  (This is not true when bootstrapping p-values later on--
+for that task, the more parallelism the better) 
+
+Although it takes a while, this only needs to be done once.  Once you have 
+zscores calculated and loaded, you can use them forever assuming you hang 
+on to the redis dump file--dump.rdb by default--so you can reload the data 
+automatically in the event of a server reboot.  For this reason, you may 
+want to configure redis to store the dump file somewhere non-ethereal (such 
+as a dedicated EBS volume you create and mount for this purpose). If you do 
+decide to do that, remember that you must both update the `dir` setting in 
+redis.conf **and** add your dump file directory to 
+`/etc/systemd/system/redis-server` with a line something like this (but 
+with the actual path to the mount you created):
+
+```{bash}
+ReadWriteDirectories=/mnt/data/redis/dump/directory
+```
+
+## Gene scoring
+
+The next step is to identify the gene signature for the gene perturbation of 
+analysis.  First we score the genes using the rank-of-rank algorithm, as 
+follows:
+
+```{r eval=FALSE}
+scores <- rl$ks_pert("LMNA", "trt_sh")
+```
+
+This will find all the instances where LMNA was treated with a perturbation of 
+type "trt_sh" (i.e., knocked down with a short hairpin)
