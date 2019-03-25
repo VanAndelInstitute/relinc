@@ -22,7 +22,7 @@
 #' @import redux
 NULL
 Relincr$set("public", "approved_drugs", function() {
-    if(is.na(private$sl))
+    if(!is.object(private$sl))
         private$start_slinky()
 
     perts <- clue(private$sl, "rep_drug_indications",

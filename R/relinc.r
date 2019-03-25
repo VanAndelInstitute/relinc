@@ -37,6 +37,7 @@ Relincr <- R6::R6Class(
     public = list(
         initialize = function(interactive = TRUE) {
             private$CONFIG <- .check_config()
+            private$cl <- .init_cluster()
         },
         add = function() {
             return(self$a + self$b)
@@ -45,7 +46,8 @@ Relincr <- R6::R6Class(
     private = list(
         CONFIG = NA,
         sl = NA,
-        redis_con = NA
+        redis_con = NA,
+        cl = NA
     )
 )
 

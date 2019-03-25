@@ -1,6 +1,8 @@
 inst/doc
 .Rproj.user
 .Rhistory
+.lock
+.thlock
 config.r
 config.rds
 man/*

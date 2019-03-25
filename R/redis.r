@@ -23,7 +23,10 @@ NULL
 
 Relincr$set("public", "write_record", function(key, value) {
     tryCatch({
-        private$redis_con$SET(key, object_to_string(value))
+        con <- hiredis(host = private$CONFIG$REDIS_HOST,
+                       port = private$CONFIG$REDIS_PORT)
+        con$SET(key, object_to_string(value))
+        rm(con)
     },
     error = function(e) {
         private$logger("ERROR", e)
@@ -104,3 +107,77 @@ Relincr$set("public", "fetch_records", function(keys) {
         names(dat) <- keys[ix]
     dat
 })
+
+
+#' Fetch z-scores for a pert
+#'
+#' Returns all z-scores for given pert and pert_type
+#'
+#'
+#' @param name The pert_iname for desired perturbation
+#' @param type The pert_type desired.  Default is `trt_cp`.
+#' @return Returns a data.frame containing to z-scores
+#'
+#' @examples
+#' \dontrun{
+#'
+#' x <- Relincr$new()
+#' dat <- x$fetch_by_pert("amoxicillin")
+#' }
+#' @format NULL
+#' @name fetch_by_pert
+#' @import slinky
+NULL
+
+Relincr$set("public", "fetch_by_pert", function(name, type="trt_cp") {
+    if(!is.object(private$sl))
+        private$start_slinky()
+    ix <- which(metadata(private$sl)$pert_iname == name &
+                    metadata(private$sl)$pert_type == type)
+    self$fetch_records(metadata(private$sl)$inst_id[ix])
+})
+
+
+#' Fetch random set of z-scores
+#'
+#' Returns a random set of z-scores of specified size.  Useful for
+#' boostrapping
+#'
+#'
+#' @param n How many samples to fetch
+#' @param type The pert_type from which to sample. Default is `trt_cp`
+#' @return Returns a data.frame containing zscores stored for a random
+#' set of samples
+#'
+#' @examples
+#' \dontrun{
+#'
+#' x <- Relincr$new()
+#' dat <- x$fetch_random(10)
+#' }
+#' @format NULL
+#' @name fetch_by_pert
+#' @import slinky
+NULL
+Relincr$set("public", "fetch_rand", function(n, type="trt_cp") {
+    if(!is.object(private$sl))
+        private$start_slinky()
+    nn <- 0
+    dat <- NULL
+    ix.type <- which(metadata(private$sl)$pert_type == type)
+    while(nn < n) {
+        ix <- sample(ix.type, n-nn)
+        d <- self$fetch_records(metadata(private$sl)$inst_id[ix])
+        if(!is.na(d[1])) {
+            if(is.null(dat)) {
+                dat <- d
+            } else {
+                dat <- cbind(dat, d)
+            }
+            nn <- ncol(dat)
+        }
+    }
+    dat
+})
+
+

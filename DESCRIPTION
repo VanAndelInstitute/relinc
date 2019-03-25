@@ -11,7 +11,9 @@ Imports:
     doMC,
     parallel,
     slinky,
-    redux
+    redux,
+    flock,
+    dplyr
 Suggests:
     testthat,
     knitr,
@@ -22,6 +24,8 @@ Collate:
     'slinky.r'
     'internals.r'
     'internals_slinky.r'
+    'zscore.r'
+    'ks.r'
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
