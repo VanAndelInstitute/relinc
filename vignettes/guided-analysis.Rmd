@@ -29,17 +29,77 @@ group.  Use similar strategies in other environments to keep your redis
 instance behind a firewall.  If you do not, you will find your redis server 
 hacked within minutes.
 
-```bash
+The following tutorial was completed using an m5.4xlarge instance type 
+($0.77/hour for on demand, presently $0.25/hour for spot pricing) running 
+Ubuntu Server 20.04 LTS (HVM) (ami-0801628222e2e96d6), with a 100GB root volume. 
+
+First we need to install some system libraries for R, and redis.
+
+```{bash, eval=FALSE}
+sudo -s
+apt-get update
+apt-get -y install build-essential
+apt-get -y install gfortran
+apt-get -y install libssl-dev
+apt-get -y install libcurl4-openssl-dev
+apt-get -y install libxml2-dev
+apt-get -y install libtool-bin
+apt-get -y install libhiredis-dev
+apt-get -y install emacs-nox
+
 sudo apt-get -y install redis-server
+
 ```
 
-Make sure the redis-server is configured to store the snapshot somewhere 
-with enough room (the default location is fine if your root drive had 50GB or
-so free), and to allow connections from outside (by commenting out the "bind" 
-line in the network section of redis.conf) if you are going to use 
-separate servers to do the analysis (see below).  Remember, "outside" means 
-"other servers in your security group or behind your firewall", not the 
-entire world.
+We can then install the latest R (at least, the latest relase from version 4)
+
+```{bash, eval=FALSE}
+# a little shell magic to get our Ubuntu release's "codename"
+RELEASE=$(lsb_release -as 2>/dev/null | tail -n1)
+
+echo "deb https://cloud.r-project.org/bin/linux/ubuntu ${RELEASE}-cran40/" >> /etc/apt/sources.list
+gpg --keyserver keyserver.ubuntu.com --recv-keys 51716619E084DAB9
+gpg -a --export 51716619E084DAB9 | sudo apt-key add -
+apt-get update
+apt-get -y install r-base
+
+```
+
+We are now ready to install libraries we will need to complete the analysis. 
+From within an R session, run the following to check for required libraries 
+and install any that are missing.
+
+```{r, eval = FALSE}
+
+req <- c(
+    "R6",
+    "doMC",
+    "foreach",
+    "parallel",
+    "slinky",
+    "redux",
+    "flock",
+    "dplyr",
+    "devtools")
+
+ix <- which(req %in% installed.packages())
+if(length(ix < length(req))) {
+  setRepositories(ind = c(1:5))
+  install.packages(req[-ix])
+}
+
+if(!require(relinc))
+  devtools::install_github("vanandelinstitute/relinc")
+
+```
+
+Make sure the redis-server is configured to store the snapshot somewhere with
+enough room (the default location, `/var/lib/redis`, is fine if your root drive
+has 50GB or so free), and to allow connections from outside (by commenting out
+the "bind" line in the network section of redis.conf) if you are going to use
+separate servers to do the analysis (see below).  Remember, "outside" means
+"other servers in your security group or behind your firewall", not the entire
+world.
 
 Significance testing requires boostrapping large number of samples, and thus 
 having many cores is desirable.  For example, we use 100,000 boostrapped 
@@ -51,12 +111,6 @@ recommended) which you leave running until prolonged periods of downtime
 are anticipated, and then one or more larger multi-core servers in the same 
 security group when you are actively selecting drugs.
 
-This analysis requires the latest versions of `relinc` and `slinky`.
-
-```{r eval=FALSE}
-devtools::install_github("vanandelinstitute\slinky")
-devtools::install_github("vanandelinstitute\relinc")
-```
 
 The analysis also requires the LINCS L1000 data files (expression data and 
 instance "info").  These need to be fetched and stored somewhere memorable 
@@ -74,7 +128,7 @@ gunzip GSE92742_Broad_LINCS_Level3_INF_mlr12k_n1319138x12328.gctx.gz
 ## Calculating zscores
 
 Once your redis server is up and running, you can configure the client and 
-calculate and store  robust zscores as follows.  The first command will prompt
+calculate and store robust zscores as follows.  The first command will prompt
 you for details about the location of your redis server and data files.  You 
 will also be prompted to save this information so you do not need to enter it 
 each time.
