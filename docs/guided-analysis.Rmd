@@ -1,5 +1,5 @@
 ---
-title: "Guided Analyais for Gene Signature Based Repositioning"
+title: "Guided Analysis for Gene Signature Based Repositioning"
 author: "Eric J. Kort"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
@@ -77,6 +77,7 @@ req <- c(
     "doMC",
     "foreach",
     "parallel",
+    "doParallel",
     "slinky",
     "redux",
     "flock",
@@ -225,8 +226,7 @@ in subsequent analysis.
 
 library(relinc)
 library(parallel)
-library(snow)
-library(doSNOW)
+library(doParallel)
 library(rredis)
 
 rl <- Relincr$new(interactive = TRUE)
@@ -287,8 +287,7 @@ xsum <- function(x, up, down, n=489) {
 }
 
 cores <- detectCores() - 1
-cl <- makeSOCKcluster(cores)
-registerDoSNOW(cl)
+registerDoParallel(cores)
   
 r <- foreach(i=1:10000, .packages="rredis", .combine="cbind") %dopar% {  
   up <- sample(rownames(data), 13)
@@ -305,8 +304,7 @@ r <- foreach(i=1:10000, .packages="rredis", .combine="cbind") %dopar% {
   spec
 }
 
-snow::stopCluster(cl)
-  
+
 saveRDS(r, file="xsum_raw_median_489_13_13.rds")
 ```
 
