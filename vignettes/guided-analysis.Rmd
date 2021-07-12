@@ -135,7 +135,7 @@ each time.
 
 ```{r eval=FALSE}
 library(relinc)
-rl <- Relincr(interactive = TRUE)
+rl <- Relincr$new(interactive = TRUE)
 rl$zscore_all_drugs()
 rl$zscore_all_genes()
 
