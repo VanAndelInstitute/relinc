@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<meta name="author" content="Eric J. Kort" />
+
+<meta name="date" content="2021-07-12" />
+
+<title>Guided Analyais for Gene Signature Based Repositioning</title>
+
+<script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
+// v0.0.1
+// Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
+
+document.addEventListener('DOMContentLoaded', function() {
+  const codeList = document.getElementsByClassName("sourceCode");
+  for (var i = 0; i < codeList.length; i++) {
+    var linkList = codeList[i].getElementsByTagName('a');
+    for (var j = 0; j < linkList.length; j++) {
+      if (linkList[j].innerHTML === "") {
+        linkList[j].setAttribute('aria-hidden', 'true');
+      }
+    }
+  }
+});
+</script>
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Guided Analyais for Gene Signature Based Repositioning</h1>
+<h4 class="author">Eric J. Kort</h4>
+<h4 class="date">2021-07-12</h4>
+
+
+
+<p>Identifying drugs targeting specific gene perturbations is facilitated by the <code>relinc</code> and <code>slinky</code> packages. This document describes how to conduct such an analysis.</p>
+<div id="pre-requisites." class="section level2">
+<h2>Pre-requisites.</h2>
+<p>The relinc package is designed to expedite analysis by storing zscores on a redis server. Do not open your redis server to the world. If working on AWS, open port 6379 only to other servers within a specified security group. Use similar strategies in other environments to keep your redis instance behind a firewall. If you do not, you will find your redis server hacked within minutes.</p>
+<p>The following tutorial was completed using an m5.4xlarge instance type ($0.77/hour for on demand, presently $0.25/hour for spot pricing) running Ubuntu Server 20.04 LTS (HVM) (ami-0801628222e2e96d6), with a 100GB root volume.</p>
+<p>First we need to install some system libraries for R, and redis.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1"></a><span class="fu">sudo</span> -s</span>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="ex">apt-get</span> update</span>
+<span id="cb1-3"><a href="#cb1-3"></a><span class="ex">apt-get</span> -y install build-essential</span>
+<span id="cb1-4"><a href="#cb1-4"></a><span class="ex">apt-get</span> -y install gfortran</span>
+<span id="cb1-5"><a href="#cb1-5"></a><span class="ex">apt-get</span> -y install libssl-dev</span>
+<span id="cb1-6"><a href="#cb1-6"></a><span class="ex">apt-get</span> -y install libcurl4-openssl-dev</span>
+<span id="cb1-7"><a href="#cb1-7"></a><span class="ex">apt-get</span> -y install libxml2-dev</span>
+<span id="cb1-8"><a href="#cb1-8"></a><span class="ex">apt-get</span> -y install libtool-bin</span>
+<span id="cb1-9"><a href="#cb1-9"></a><span class="ex">apt-get</span> -y install libhiredis-dev</span>
+<span id="cb1-10"><a href="#cb1-10"></a><span class="ex">apt-get</span> -y install emacs-nox</span>
+<span id="cb1-11"><a href="#cb1-11"></a></span>
+<span id="cb1-12"><a href="#cb1-12"></a><span class="fu">sudo</span> apt-get -y install redis-server</span></code></pre></div>
+<p>We can then install the latest R (at least, the latest relase from version 4)</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1"></a><span class="co"># a little shell magic to get our Ubuntu release&#39;s &quot;codename&quot;</span></span>
+<span id="cb2-2"><a href="#cb2-2"></a><span class="va">RELEASE=$(</span><span class="ex">lsb_release</span> -as <span class="op">2&gt;</span>/dev/null <span class="kw">|</span> <span class="fu">tail</span> -n1<span class="va">)</span></span>
+<span id="cb2-3"><a href="#cb2-3"></a></span>
+<span id="cb2-4"><a href="#cb2-4"></a><span class="bu">echo</span> <span class="st">&quot;deb https://cloud.r-project.org/bin/linux/ubuntu </span><span class="va">${RELEASE}</span><span class="st">-cran40/&quot;</span> <span class="op">&gt;&gt;</span> /etc/apt/sources.list</span>
+<span id="cb2-5"><a href="#cb2-5"></a><span class="ex">gpg</span> --keyserver keyserver.ubuntu.com --recv-keys 51716619E084DAB9</span>
+<span id="cb2-6"><a href="#cb2-6"></a><span class="ex">gpg</span> -a --export 51716619E084DAB9 <span class="kw">|</span> <span class="fu">sudo</span> apt-key add -</span>
+<span id="cb2-7"><a href="#cb2-7"></a><span class="ex">apt-get</span> update</span>
+<span id="cb2-8"><a href="#cb2-8"></a><span class="ex">apt-get</span> -y install r-base</span></code></pre></div>
+<p>We are now ready to install libraries we will need to complete the analysis. From within an R session, run the following to check for required libraries and install any that are missing.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a></span>
+<span id="cb3-2"><a href="#cb3-2"></a>req &lt;-<span class="st"> </span><span class="kw">c</span>(</span>
+<span id="cb3-3"><a href="#cb3-3"></a>    <span class="st">&quot;R6&quot;</span>,</span>
+<span id="cb3-4"><a href="#cb3-4"></a>    <span class="st">&quot;doMC&quot;</span>,</span>
+<span id="cb3-5"><a href="#cb3-5"></a>    <span class="st">&quot;foreach&quot;</span>,</span>
+<span id="cb3-6"><a href="#cb3-6"></a>    <span class="st">&quot;parallel&quot;</span>,</span>
+<span id="cb3-7"><a href="#cb3-7"></a>    <span class="st">&quot;slinky&quot;</span>,</span>
+<span id="cb3-8"><a href="#cb3-8"></a>    <span class="st">&quot;redux&quot;</span>,</span>
+<span id="cb3-9"><a href="#cb3-9"></a>    <span class="st">&quot;flock&quot;</span>,</span>
+<span id="cb3-10"><a href="#cb3-10"></a>    <span class="st">&quot;dplyr&quot;</span>,</span>
+<span id="cb3-11"><a href="#cb3-11"></a>    <span class="st">&quot;devtools&quot;</span>,</span>
+<span id="cb3-12"><a href="#cb3-12"></a>    <span class="st">&quot;org.Hs.eg.db&quot;</span>,</span>
+<span id="cb3-13"><a href="#cb3-13"></a>    <span class="st">&quot;snow&quot;</span>, </span>
+<span id="cb3-14"><a href="#cb3-14"></a>    <span class="st">&quot;doSNOW&quot;</span>,</span>
+<span id="cb3-15"><a href="#cb3-15"></a>    <span class="st">&quot;redis&quot;</span>)</span>
+<span id="cb3-16"><a href="#cb3-16"></a></span>
+<span id="cb3-17"><a href="#cb3-17"></a>ix &lt;-<span class="st"> </span><span class="kw">which</span>(req <span class="op">%in%</span><span class="st"> </span><span class="kw">installed.packages</span>())</span>
+<span id="cb3-18"><a href="#cb3-18"></a><span class="cf">if</span>(<span class="kw">length</span>(ix <span class="op">&lt;</span><span class="st"> </span><span class="kw">length</span>(req))) {</span>
+<span id="cb3-19"><a href="#cb3-19"></a>  <span class="kw">setRepositories</span>(<span class="dt">ind =</span> <span class="kw">c</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">6</span>))</span>
+<span id="cb3-20"><a href="#cb3-20"></a>  <span class="kw">install.packages</span>(req[<span class="op">-</span>ix])</span>
+<span id="cb3-21"><a href="#cb3-21"></a>}</span>
+<span id="cb3-22"><a href="#cb3-22"></a></span>
+<span id="cb3-23"><a href="#cb3-23"></a><span class="cf">if</span>(<span class="op">!</span><span class="kw">require</span>(relinc))</span>
+<span id="cb3-24"><a href="#cb3-24"></a>  devtools<span class="op">::</span><span class="kw">install_github</span>(<span class="st">&quot;vanandelinstitute/relinc&quot;</span>)</span></code></pre></div>
+<p>Make sure the redis-server is configured to store the snapshot somewhere with enough room (the default location, <code>/var/lib/redis</code>, is fine if your root drive has 50GB or so free), and to allow connections from outside (by commenting out the “bind” line in the network section of redis.conf) if you are going to use separate servers to do the analysis (see below). Remember, “outside” means “other servers in your security group or behind your firewall”, not the entire world.</p>
+<p>Significance testing requires boostrapping large number of samples, and thus having many cores is desirable. For example, we use 100,000 boostrapped samples for gene significance testing, which takes about 8 hours with 16 cores. If you are working in the cloud, you may not want to keep such a beefy server running all the time. The recommended approach is to have your redis server on a smaller server (a couple of processors and 30GB of RAM is recommended) which you leave running until prolonged periods of downtime are anticipated, and then one or more larger multi-core servers in the same security group when you are actively selecting drugs.</p>
+<p>The analysis also requires the LINCS L1000 data files (expression data and instance “info”). These need to be fetched and stored somewhere memorable that has enough room for them. Once you have loaded the z-scores, you no longer need the expression data file.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1"></a><span class="fu">mkdir</span> data</span>
+<span id="cb4-2"><a href="#cb4-2"></a><span class="bu">cd</span> data</span>
+<span id="cb4-3"><a href="#cb4-3"></a><span class="fu">wget</span> ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE92nnn/GSE92742/suppl/GSE92742_Broad_LINCS_Level3_INF_mlr12k_n1319138x12328.gctx.gz</span>
+<span id="cb4-4"><a href="#cb4-4"></a><span class="fu">wget</span> ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE92nnn/GSE92742/suppl/GSE92742_Broad_LINCS_inst_info.txt.gz</span>
+<span id="cb4-5"><a href="#cb4-5"></a><span class="fu">gunzip</span> GSE92742_Broad_LINCS_Level3_INF_mlr12k_n1319138x12328.gctx.gz</span></code></pre></div>
+</div>
+<div id="calculating-zscores" class="section level2">
+<h2>Calculating zscores</h2>
+<p>Once your redis server is up and running, you can configure the client and calculate and store robust zscores as follows. The first command will prompt you for details about the location of your redis server and data files. You will also be prompted to save this information so you do not need to enter it each time.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">library</span>(relinc)</span>
+<span id="cb5-2"><a href="#cb5-2"></a>rl &lt;-<span class="st"> </span>Relincr<span class="op">$</span><span class="kw">new</span>(<span class="dt">interactive =</span> <span class="ot">TRUE</span>)</span>
+<span id="cb5-3"><a href="#cb5-3"></a>rl<span class="op">$</span><span class="kw">zscore_all_drugs</span>()</span>
+<span id="cb5-4"><a href="#cb5-4"></a>rl<span class="op">$</span><span class="kw">zscore_all_genes</span>()</span></code></pre></div>
+<p>That will take quite a while–several hours or so, depending on how many cores you have. Note that the you will experience diminishing returns at this step with lots of cores, since this requires calls to the clue.io api to identify appropriate control samples for each instance. Relincr throttles these requests to to more than 1 every 2 seconds (even if using multiple cores). Since calculating the zscores also take a short bit of time, this is more efficient if you have multiple cores, but probably having more than 4-8 cores will not help any. (This is not true when bootstrapping p-values later on– for that task, the more parallelism the better)</p>
+<p>Although it takes a while, this only needs to be done once. Once you have zscores calculated and loaded, you can use them forever assuming you hang on to the redis dump file–dump.rdb by default–so you can reload the data automatically in the event of a server reboot. For this reason, you may want to configure redis to store the dump file somewhere non-ethereal (such as a dedicated EBS volume you create and mount for this purpose). If you do decide to do that, remember that you must both update the <code>dir</code> setting in redis.conf <strong>and</strong> add your dump file directory to <code>/etc/systemd/system/redis-server</code> with a line something like this (but with the actual path to the mount you created):</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1"></a><span class="va">ReadWriteDirectories=</span>/mnt/data/redis/dump/directory</span></code></pre></div>
+</div>
+<div id="gene-scoring" class="section level2">
+<h2>Gene scoring</h2>
+<p>The next step is to identify the gene signature for the gene perturbation of analysis. First we score the genes using the rank-of-rank algorithm, as follows:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a>scores &lt;-<span class="st"> </span>rl<span class="op">$</span><span class="kw">ks_pert</span>(<span class="st">&quot;LMNA&quot;</span>, <span class="st">&quot;trt_sh&quot;</span>)</span></code></pre></div>
+<p>This will find all the instances where LMNA was treated with a perturbation of type “trt_sh” (i.e., knocked down with a short hairpin)</p>
+<p><strong>TO DO:</strong> Need to complete this section</p>
+</div>
+<div id="drug-scoring" class="section level2">
+<h2>Drug scoring</h2>
+<p>For this example we use a signature of genes that are up and down regulated in stenotic vs. normal atrioventricular valve tissue. The signatures are provided as gene symbols which must be converted to entrez gene ids and then filtered on the genes that are in the 978 landmark genes directly profiled by the L1000 project.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a></span>
+<span id="cb8-2"><a href="#cb8-2"></a><span class="co"># get the rownames of the stored zscores</span></span>
+<span id="cb8-3"><a href="#cb8-3"></a></span>
+<span id="cb8-4"><a href="#cb8-4"></a>rn &lt;-<span class="st"> </span><span class="kw">rownames</span>(rl<span class="op">$</span><span class="kw">fetch_rand</span>(<span class="dv">1</span>))</span>
+<span id="cb8-5"><a href="#cb8-5"></a></span>
+<span id="cb8-6"><a href="#cb8-6"></a>up &lt;-<span class="st"> </span><span class="kw">read.delim</span>(<span class="st">&quot;av_stenosis_up.grp&quot;</span>)[,<span class="dv">1</span>]</span>
+<span id="cb8-7"><a href="#cb8-7"></a>up.eg &lt;-<span class="st"> </span><span class="kw">unlist</span>(<span class="kw">mget</span>(up, org.Hs.egSYMBOL2EG, <span class="dt">ifnotfound=</span><span class="ot">NA</span>))</span>
+<span id="cb8-8"><a href="#cb8-8"></a>ix &lt;-<span class="st"> </span><span class="kw">which</span>(up.eg <span class="op">%in%</span><span class="st"> </span>rn)</span>
+<span id="cb8-9"><a href="#cb8-9"></a>up.eg &lt;-<span class="st"> </span>up.eg[ix]</span>
+<span id="cb8-10"><a href="#cb8-10"></a><span class="kw">writeLines</span>(up.eg, <span class="st">&quot;av_stenosis_up_eg.grp&quot;</span>)</span>
+<span id="cb8-11"><a href="#cb8-11"></a></span>
+<span id="cb8-12"><a href="#cb8-12"></a>down &lt;-<span class="st"> </span><span class="kw">read.delim</span>(<span class="st">&quot;av_stenosis_down.grp&quot;</span>)[,<span class="dv">1</span>]</span>
+<span id="cb8-13"><a href="#cb8-13"></a>down.eg &lt;-<span class="st"> </span><span class="kw">unlist</span>(<span class="kw">mget</span>(down, org.Hs.egSYMBOL2EG, <span class="dt">ifnotfound=</span><span class="ot">NA</span>))</span>
+<span id="cb8-14"><a href="#cb8-14"></a>ix &lt;-<span class="st"> </span><span class="kw">which</span>(down.eg <span class="op">%in%</span><span class="st"> </span>rn)</span>
+<span id="cb8-15"><a href="#cb8-15"></a>down.eg &lt;-<span class="st"> </span>down.eg[ix]</span>
+<span id="cb8-16"><a href="#cb8-16"></a><span class="kw">writeLines</span>(up.eg, <span class="st">&quot;av_stenosis_up_eg.grp&quot;</span>)</span></code></pre></div>
+<p>This results in up and down gene lists which happen to both be 13 genes in length. We must create a matrix of enrichment scores derived from random gene signatures of this length to use downstream for bootstrap p-value estimation. We want to restrict our sampling to instances that have been treated with FDA approved drugs as that is the universe from which we will be calculating scores in subsequent analysis.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a></span>
+<span id="cb9-2"><a href="#cb9-2"></a><span class="kw">library</span>(relinc)</span>
+<span id="cb9-3"><a href="#cb9-3"></a><span class="kw">library</span>(parallel)</span>
+<span id="cb9-4"><a href="#cb9-4"></a><span class="kw">library</span>(snow)</span>
+<span id="cb9-5"><a href="#cb9-5"></a><span class="kw">library</span>(doSNOW)</span>
+<span id="cb9-6"><a href="#cb9-6"></a><span class="kw">library</span>(rredis)</span>
+<span id="cb9-7"><a href="#cb9-7"></a></span>
+<span id="cb9-8"><a href="#cb9-8"></a>rl &lt;-<span class="st"> </span>Relincr<span class="op">$</span><span class="kw">new</span>(<span class="dt">interactive =</span> <span class="ot">TRUE</span>)</span>
+<span id="cb9-9"><a href="#cb9-9"></a></span>
+<span id="cb9-10"><a href="#cb9-10"></a>metadata &lt;-<span class="st"> </span><span class="kw">readRDS</span>(<span class="st">&quot;relinc/vignettes/metadata.rds&quot;</span>)</span>
+<span id="cb9-11"><a href="#cb9-11"></a>metadata<span class="op">$</span>pert_desc &lt;-<span class="st"> </span><span class="kw">tolower</span>(metadata<span class="op">$</span>pert_desc)</span>
+<span id="cb9-12"><a href="#cb9-12"></a></span>
+<span id="cb9-13"><a href="#cb9-13"></a>fda_ix &lt;-<span class="st"> </span><span class="kw">which</span>(metadata<span class="op">$</span>is_fda <span class="op">&amp;</span><span class="st"> </span>metadata<span class="op">$</span>is_gold)</span>
+<span id="cb9-14"><a href="#cb9-14"></a></span>
+<span id="cb9-15"><a href="#cb9-15"></a>fda_keys &lt;-metadata<span class="op">$</span>distil_id[fda_ix]</span>
+<span id="cb9-16"><a href="#cb9-16"></a></span>
+<span id="cb9-17"><a href="#cb9-17"></a>bigFetch &lt;-<span class="st"> </span><span class="cf">function</span>(keys, <span class="dt">stride=</span><span class="dv">2000</span>) {</span>
+<span id="cb9-18"><a href="#cb9-18"></a>  data &lt;-<span class="st"> </span><span class="kw">matrix</span>(<span class="dv">0</span>, <span class="dt">ncol =</span> <span class="kw">length</span>(keys), <span class="dt">nrow =</span> <span class="dv">978</span>)</span>
+<span id="cb9-19"><a href="#cb9-19"></a>  keys &lt;-<span class="st"> </span><span class="kw">split</span>(keys, <span class="kw">ceiling</span>(<span class="kw">seq_along</span>(fda_keys)<span class="op">/</span>stride))</span>
+<span id="cb9-20"><a href="#cb9-20"></a></span>
+<span id="cb9-21"><a href="#cb9-21"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="op">:</span><span class="kw">length</span>(keys)) {</span>
+<span id="cb9-22"><a href="#cb9-22"></a>    r &lt;-<span class="st"> </span><span class="kw">redisMGet</span>(keys[[i]])</span>
+<span id="cb9-23"><a href="#cb9-23"></a>    <span class="cf">for</span> (ii <span class="cf">in</span> <span class="dv">1</span><span class="op">:</span><span class="kw">length</span>(r)) {</span>
+<span id="cb9-24"><a href="#cb9-24"></a>      <span class="cf">if</span> (<span class="kw">length</span>(r[[ii]]) <span class="op">&gt;</span><span class="st">  </span><span class="dv">0</span>) {</span>
+<span id="cb9-25"><a href="#cb9-25"></a>        data[,((i <span class="op">-</span><span class="st"> </span><span class="dv">1</span>) <span class="op">*</span><span class="st"> </span>stride <span class="op">+</span><span class="st"> </span>ii)] &lt;-<span class="st"> </span>r[[ii]]</span>
+<span id="cb9-26"><a href="#cb9-26"></a>      }</span>
+<span id="cb9-27"><a href="#cb9-27"></a>    }</span>
+<span id="cb9-28"><a href="#cb9-28"></a>    <span class="kw">print</span>(i<span class="op">*</span>stride)</span>
+<span id="cb9-29"><a href="#cb9-29"></a>  }</span>
+<span id="cb9-30"><a href="#cb9-30"></a>  data</span>
+<span id="cb9-31"><a href="#cb9-31"></a>}</span>
+<span id="cb9-32"><a href="#cb9-32"></a></span>
+<span id="cb9-33"><a href="#cb9-33"></a><span class="kw">redisConnect</span>()</span>
+<span id="cb9-34"><a href="#cb9-34"></a>data &lt;-<span class="st"> </span><span class="kw">bigFetch</span>(fda_keys)</span>
+<span id="cb9-35"><a href="#cb9-35"></a>data &lt;-<span class="st"> </span><span class="kw">apply</span>(data, <span class="dv">2</span>, as.numeric)</span>
+<span id="cb9-36"><a href="#cb9-36"></a>missing &lt;-<span class="st"> </span><span class="kw">which</span>(<span class="kw">apply</span>(data, <span class="dv">2</span>, sum)<span class="op">==</span><span class="dv">0</span>)</span>
+<span id="cb9-37"><a href="#cb9-37"></a>data &lt;-<span class="st"> </span>data[,<span class="op">-</span>missing]</span>
+<span id="cb9-38"><a href="#cb9-38"></a>fda_ix &lt;-<span class="st"> </span>fda_ix[<span class="op">-</span>missing]</span>
+<span id="cb9-39"><a href="#cb9-39"></a><span class="kw">rownames</span>(data) &lt;-<span class="st"> </span><span class="kw">names</span>(<span class="kw">redisGet</span>(fda_keys[<span class="dv">1</span>]))</span>
+<span id="cb9-40"><a href="#cb9-40"></a><span class="kw">redisClose</span>()</span></code></pre></div>
+<p>The enrichment score we are using is the very simple XSUM statistic which Agarwal et al. have demonstrated is quite performant compared to other metrics they tested. We generate 10,000 random signatures (each having 13 “up” genes and 13 “down” genes to match our actual disease signature from above), and for each random signature we calculate and store the XSUM statistic for that signature.</p>
+<p>Note that this take a while and benefit from parallelization, as implemented below.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1"></a>xsum &lt;-<span class="st"> </span><span class="cf">function</span>(x, up, down, <span class="dt">n=</span><span class="dv">489</span>) {</span>
+<span id="cb10-2"><a href="#cb10-2"></a>  up.ix &lt;-<span class="st"> </span><span class="kw">which</span>(<span class="kw">rownames</span>(x) <span class="op">%in%</span><span class="st"> </span>up)</span>
+<span id="cb10-3"><a href="#cb10-3"></a>  down.ix &lt;-<span class="st"> </span><span class="kw">which</span>(<span class="kw">rownames</span>(x) <span class="op">%in%</span><span class="st"> </span>down)</span>
+<span id="cb10-4"><a href="#cb10-4"></a>  f &lt;-<span class="st"> </span><span class="cf">function</span>(a) {</span>
+<span id="cb10-5"><a href="#cb10-5"></a>    a_r &lt;-<span class="st"> </span><span class="kw">rank</span>(a)</span>
+<span id="cb10-6"><a href="#cb10-6"></a>    changed &lt;-<span class="st"> </span>a <span class="op">*</span><span class="st"> </span>(a_r <span class="op">&gt;</span><span class="st"> </span>( <span class="kw">length</span>(a_r) <span class="op">-</span><span class="st"> </span>n) <span class="op">|</span><span class="st"> </span>a_r <span class="op">&lt;</span><span class="st"> </span>n)</span>
+<span id="cb10-7"><a href="#cb10-7"></a>    <span class="kw">sum</span>(changed[up.ix]) <span class="op">-</span><span class="st"> </span><span class="kw">sum</span>(changed[down.ix])  </span>
+<span id="cb10-8"><a href="#cb10-8"></a>  }</span>
+<span id="cb10-9"><a href="#cb10-9"></a>  <span class="kw">apply</span>(x, <span class="dv">2</span>, f)</span>
+<span id="cb10-10"><a href="#cb10-10"></a>}</span>
+<span id="cb10-11"><a href="#cb10-11"></a></span>
+<span id="cb10-12"><a href="#cb10-12"></a>cores &lt;-<span class="st"> </span><span class="kw">detectCores</span>() <span class="op">-</span><span class="st"> </span><span class="dv">1</span></span>
+<span id="cb10-13"><a href="#cb10-13"></a>cl &lt;-<span class="st"> </span><span class="kw">makeSOCKcluster</span>(cores)</span>
+<span id="cb10-14"><a href="#cb10-14"></a><span class="kw">registerDoSNOW</span>(cl)</span>
+<span id="cb10-15"><a href="#cb10-15"></a>  </span>
+<span id="cb10-16"><a href="#cb10-16"></a>r &lt;-<span class="st"> </span><span class="kw">foreach</span>(<span class="dt">i=</span><span class="dv">1</span><span class="op">:</span><span class="dv">10000</span>, <span class="dt">.packages=</span><span class="st">&quot;rredis&quot;</span>, <span class="dt">.combine=</span><span class="st">&quot;cbind&quot;</span>) <span class="op">%dopar%</span><span class="st"> </span>{  </span>
+<span id="cb10-17"><a href="#cb10-17"></a>  up &lt;-<span class="st"> </span><span class="kw">sample</span>(<span class="kw">rownames</span>(data), <span class="dv">13</span>)</span>
+<span id="cb10-18"><a href="#cb10-18"></a>  down &lt;-<span class="st"> </span><span class="kw">sample</span>(<span class="kw">rownames</span>(data), <span class="dv">13</span>)</span>
+<span id="cb10-19"><a href="#cb10-19"></a>  scores &lt;-<span class="st"> </span><span class="kw">xsum</span>(data, up, down)</span>
+<span id="cb10-20"><a href="#cb10-20"></a>  <span class="kw">names</span>(scores) &lt;-<span class="st"> </span>metadata<span class="op">$</span>pert_desc[fda_ix]</span>
+<span id="cb10-21"><a href="#cb10-21"></a>  </span>
+<span id="cb10-22"><a href="#cb10-22"></a>  drugs &lt;-<span class="st"> </span>metadata<span class="op">$</span>pert_desc[fda_ix]</span>
+<span id="cb10-23"><a href="#cb10-23"></a>  spec &lt;-<span class="st"> </span><span class="kw">numeric</span>()</span>
+<span id="cb10-24"><a href="#cb10-24"></a>  <span class="cf">for</span>(s <span class="cf">in</span> <span class="kw">unique</span>(drugs)) {</span>
+<span id="cb10-25"><a href="#cb10-25"></a>    spec &lt;-<span class="st"> </span><span class="kw">c</span>(spec, <span class="kw">median</span>(scores[<span class="kw">which</span>(drugs <span class="op">==</span><span class="st"> </span>s)], <span class="dt">na.rm=</span><span class="ot">TRUE</span>))</span>
+<span id="cb10-26"><a href="#cb10-26"></a>  }</span>
+<span id="cb10-27"><a href="#cb10-27"></a>  <span class="kw">names</span>(spec) &lt;-<span class="st"> </span><span class="kw">unique</span>(drugs)</span>
+<span id="cb10-28"><a href="#cb10-28"></a>  spec</span>
+<span id="cb10-29"><a href="#cb10-29"></a>}</span>
+<span id="cb10-30"><a href="#cb10-30"></a></span>
+<span id="cb10-31"><a href="#cb10-31"></a>snow<span class="op">::</span><span class="kw">stopCluster</span>(cl)</span>
+<span id="cb10-32"><a href="#cb10-32"></a>  </span>
+<span id="cb10-33"><a href="#cb10-33"></a><span class="kw">saveRDS</span>(r, <span class="dt">file=</span><span class="st">&quot;xsum_raw_median_489_13_13.rds&quot;</span>)</span></code></pre></div>
+<p>This matrix of bootstrapped values can then be used to estimate p-values when we calculate the enrichment score for each drug against our disease signature as follows.</p>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

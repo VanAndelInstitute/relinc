@@ -1,5 +1,5 @@
 ---
-title: "Guided Analyais"
+title: "Guided Analyais for Gene Signature Based Repositioning"
 author: "Eric J. Kort"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
@@ -12,7 +12,8 @@ vignette: >
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  eval = FALSE
 )
 ```
 
@@ -83,7 +84,8 @@ req <- c(
     "devtools",
     "org.Hs.eg.db",
     "snow", 
-    "doSNOW")
+    "doSNOW",
+    "redis")
 
 ix <- which(req %in% installed.packages())
 if(length(ix < length(req))) {
@@ -215,9 +217,101 @@ writeLines(up.eg, "av_stenosis_up_eg.grp")
 This results in up and down gene lists which happen to both be 13 genes in 
 length. We must create a matrix of enrichment scores derived from  random gene 
 signatures of this length to use downstream for bootstrap p-value estimation.
+We want to restrict our sampling to instances that have been treated with FDA 
+approved drugs as that is the universe from which we will be calculating scores
+in subsequent analysis.
 
 ```{r}
+
+library(relinc)
+library(parallel)
 library(snow)
 library(doSNOW)
+library(rredis)
+
+rl <- Relincr$new(interactive = TRUE)
+
+metadata <- readRDS("relinc/vignettes/metadata.rds")
+metadata$pert_desc <- tolower(metadata$pert_desc)
+
+fda_ix <- which(metadata$is_fda & metadata$is_gold)
+
+fda_keys <-metadata$distil_id[fda_ix]
+
+bigFetch <- function(keys, stride=2000) {
+  data <- matrix(0, ncol = length(keys), nrow = 978)
+  keys <- split(keys, ceiling(seq_along(fda_keys)/stride))
+
+  for (i in 1:length(keys)) {
+    r <- redisMGet(keys[[i]])
+    for (ii in 1:length(r)) {
+      if (length(r[[ii]]) >  0) {
+        data[,((i - 1) * stride + ii)] <- r[[ii]]
+      }
+    }
+    print(i*stride)
+  }
+  data
+}
+
+redisConnect()
+data <- bigFetch(fda_keys)
+data <- apply(data, 2, as.numeric)
+missing <- which(apply(data, 2, sum)==0)
+data <- data[,-missing]
+fda_ix <- fda_ix[-missing]
+rownames(data) <- names(redisGet(fda_keys[1]))
+redisClose()
+```
+
+The enrichment score we are using is the very simple XSUM statistic which
+Agarwal et al. have demonstrated is quite performant compared to other metrics 
+they tested. We generate 10,000 random signatures (each having 13 "up" genes 
+and 13 "down" genes to match our actual disease signature from above), and 
+for each random signature we calculate and store the XSUM statistic for that 
+signature.
+
+Note that this take a while and benefit from parallelization, as implemented 
+below.
+
+```{r}
+xsum <- function(x, up, down, n=489) {
+  up.ix <- which(rownames(x) %in% up)
+  down.ix <- which(rownames(x) %in% down)
+  f <- function(a) {
+    a_r <- rank(a)
+    changed <- a * (a_r > ( length(a_r) - n) | a_r < n)
+    sum(changed[up.ix]) - sum(changed[down.ix])  
+  }
+  apply(x, 2, f)
+}
 
 cores <- detectCores() - 1
+cl <- makeSOCKcluster(cores)
+registerDoSNOW(cl)
+  
+r <- foreach(i=1:10000, .packages="rredis", .combine="cbind") %dopar% {  
+  up <- sample(rownames(data), 13)
+  down <- sample(rownames(data), 13)
+  scores <- xsum(data, up, down)
+  names(scores) <- metadata$pert_desc[fda_ix]
+  
+  drugs <- metadata$pert_desc[fda_ix]
+  spec <- numeric()
+  for(s in unique(drugs)) {
+    spec <- c(spec, median(scores[which(drugs == s)], na.rm=TRUE))
+  }
+  names(spec) <- unique(drugs)
+  spec
+}
+
+snow::stopCluster(cl)
+  
+saveRDS(r, file="xsum_raw_median_489_13_13.rds")
+```
+
+This matrix of bootstrapped values can then be used to estimate p-values when 
+we calculate the enrichment score for each drug against our disease signature 
+as follows.
+
+
