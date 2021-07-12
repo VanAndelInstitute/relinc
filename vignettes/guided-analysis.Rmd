@@ -80,11 +80,14 @@ req <- c(
     "redux",
     "flock",
     "dplyr",
-    "devtools")
+    "devtools",
+    "org.Hs.eg.db",
+    "snow", 
+    "doSNOW")
 
 ix <- which(req %in% installed.packages())
 if(length(ix < length(req))) {
-  setRepositories(ind = c(1:5))
+  setRepositories(ind = c(1:6))
   install.packages(req[-ix])
 }
 
@@ -183,4 +186,38 @@ type "trt_sh" (i.e., knocked down with a short hairpin)
 
 ## Drug scoring
 
+For this example we use a signature of genes that are up and down regulated 
+in stenotic vs. normal atrioventricular valve tissue. The signatures are 
+provided as gene symbols which must be converted to entrez gene ids and then 
+filtered on the genes that are in the 978 landmark genes directly profiled 
+by the L1000 project.
 
+```{r}
+
+# get the rownames of the stored zscores
+
+rn <- rownames(rl$fetch_rand(1))
+
+up <- read.delim("av_stenosis_up.grp")[,1]
+up.eg <- unlist(mget(up, org.Hs.egSYMBOL2EG, ifnotfound=NA))
+ix <- which(up.eg %in% rn)
+up.eg <- up.eg[ix]
+writeLines(up.eg, "av_stenosis_up_eg.grp")
+
+down <- read.delim("av_stenosis_down.grp")[,1]
+down.eg <- unlist(mget(down, org.Hs.egSYMBOL2EG, ifnotfound=NA))
+ix <- which(down.eg %in% rn)
+down.eg <- down.eg[ix]
+writeLines(up.eg, "av_stenosis_up_eg.grp")
+
+```
+
+This results in up and down gene lists which happen to both be 13 genes in 
+length. We must create a matrix of enrichment scores derived from  random gene 
+signatures of this length to use downstream for bootstrap p-value estimation.
+
+```{r}
+library(snow)
+library(doSNOW)
+
+cores <- detectCores() - 1
