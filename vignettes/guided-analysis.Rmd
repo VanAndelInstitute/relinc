@@ -178,3 +178,9 @@ scores <- rl$ks_pert("LMNA", "trt_sh")
 
 This will find all the instances where LMNA was treated with a perturbation of 
 type "trt_sh" (i.e., knocked down with a short hairpin)
+
+**TO DO:** Need to complete this section
+
+## Drug scoring
+
+
