@@ -12,3 +12,10 @@ devtools::install_github("vanandelinstitute/relinc")
 library(relinc)
 rl <- Relincr()
 ```
+
+## Usage
+
+See worked example [here](https://vanandelinstitute.github.io/relinc/guided-analysis.html). 
+
+
+**NOTE:** Supporting files are in the `./docs` directory of this repo.
