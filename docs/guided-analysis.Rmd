@@ -66,6 +66,16 @@ apt-get -y install r-base
 
 ```
 
+Optionally, you can install RStudio server to make debugging and plotting 
+simpler.
+
+```{bash}
+sudo apt-get install gdebi-core
+wget https://download2.rstudio.org/server/bionic/amd64/rstudio-server-1.4.1717-amd64.deb
+sudo gdebi rstudio-server-1.4.1717-amd64.deb
+
+```
+
 We are now ready to install libraries we will need to complete the analysis. 
 From within an R session, run the following to check for required libraries 
 and install any that are missing.
@@ -123,7 +133,7 @@ instance "info").  These need to be fetched and stored somewhere memorable
 that has enough room for them.  Once you have loaded the z-scores, you no 
 longer need the expression data file.
 
-```bash
+```{bash{}
 mkdir data
 cd data
 wget ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE92nnn/GSE92742/suppl/GSE92742_Broad_LINCS_Level3_INF_mlr12k_n1319138x12328.gctx.gz
@@ -304,12 +314,64 @@ r <- foreach(i=1:10000, .packages="rredis", .combine="cbind") %dopar% {
   spec
 }
 
-
 saveRDS(r, file="xsum_raw_median_489_13_13.rds")
+
 ```
 
 This matrix of bootstrapped values can then be used to estimate p-values when 
 we calculate the enrichment score for each drug against our disease signature 
-as follows.
+as follows. 
 
+We then score each drug against the disease signature described above.
+
+```{r}
+
+# NOTE: We swap the signatures because we want to REVERSE it, not mimic it
+up <- read.delim("docs/av_stenosis_down_eg.grp")[,1]
+down <- read.delim("./relinc/docs/av_stenosis_up_eg.grp")[,1]
+scores <- xsum(data, up, down)
+names(scores) <- metadata$pert_desc[fda_ix]
+
+drugs <- metadata$pert_desc[fda_ix]
+spec <- numeric()
+for(s in unique(drugs)) {
+  spec <- c(spec, median(scores[which(drugs == s)], na.rm=TRUE))
+}
+names(spec) <- unique(drugs)
+
+specpdf <- readRDS("docs/xsum_raw_median_489_13_13.rds")
+ix <- match(names(spec), rownames(specpdf))
+specpdf <- specpdf[ix,]
+spec_p <- apply(sweep(specpdf, 1, spec, "-" ), 1, 
+                function(x) { sum(x>0)}) /  10001
+spec_p[which(spec < 0)] <- NA
+tt <- cbind(spec, spec_p)
+write.table(tt, quote=FALSE, 
+            sep="\t", 
+            row.names=TRUE, 
+            col.names=TRUE, 
+            file = "relinc/docs/scores.tab")
+
+```
+
+We can then perform some QA on these results to ensure the calculation was 
+performed as expected.
+
+```{r}
+
+redisConnect()
+ix <- which(metadata$pert_desc = "cyproheptadine" & metadata$is_gold)
+keys <- metadata$distil_id[ix]
+dat <- redisMGet(keys)
+dat <- as.data.frame(dat)
+rownames(dat) <- names(redisGet(keys[1]))
+
+gg <- c(up, down)
+ix <- match(gg, rownames(dat))
+dat <- dat[ix,]
+saveRDS(dat, "cyproheptadine.rds")
+
+dat <- readRDS("cyproheptadine.rds")
+
+```
 
