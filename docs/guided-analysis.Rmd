@@ -277,6 +277,12 @@ To do that, we bootstrap the distribution of scores for each gene based on
 100,000 random sets of samples with the same class of treatment (short hairpins) 
 and the same size as our sample set of interest (84 samples). 
 
+Note that this process takes a while and benefits from parallelization as 
+demonstrated before. Long running processes such as this are best run within 
+a detachable terminal session (such as `screen` or [`tmux`](https://linuxize.com/post/getting-started-with-tmux/)) so you can log out 
+and pick up the results later. The ubuntu environment created above includes 
+both the `screen` and `tmux` terminal applications. 
+
 ```{r, eval = FALSE}
 library(parallel)
 library(doParallel)
