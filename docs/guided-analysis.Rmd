@@ -1,6 +1,5 @@
 ---
 title: "Guided Analysis for Gene Signature Based Repositioning"
-author: "Eric J. Kort"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
@@ -185,17 +184,207 @@ ReadWriteDirectories=/mnt/data/redis/dump/directory
 ## Gene scoring
 
 The next step is to identify the gene signature for the gene perturbation of 
-analysis.  First we score the genes using the rank-of-rank algorithm, as 
-follows:
+analysis.  For this example, we derive our signature from instances in the 
+LINCS database that were treated with short hairpins targetting the LMNA
+gene.
 
 ```{r eval=FALSE}
-scores <- rl$ks_pert("LMNA", "trt_sh")
+
+library(rredis)
+r_host = "localhost"
+r_port = 6379
+redisConnect(host=r_host, port=r_port)
+
+if(!exists("metadata")) metadata <- readRDS("relinc/docs/metadata.rds")
+metadata$pert_desc <- tolower(metadata$pert_desc)
+
+lam_inst <- which(metadata$pert_desc == "lmna" &  
+                    metadata$is_gold & 
+                    metadata$pert_type == "trt_sh")
+lam_keys <- paste(metadata$distil_id[lam_inst])
+data <- do.call(cbind, redisMGet(lam_keys))
+ids <- rownames(data)
+data <- apply(data, 2, as.numeric)
+rownames(data) <- ids
+saveRDS(data, file="relinc/docs/lamin.rds")
+
 ```
 
-This will find all the instances where LMNA was treated with a perturbation of 
-type "trt_sh" (i.e., knocked down with a short hairpin)
+Robustly identifying differentially expressed genes (DEGs) continues to be an
+active area of research in itself. It is widely known that large scale gene
+expression efforts are plagued with "batch effects" wherein the variation
+between samples is overwhelmed by variation between plates, technicians,
+dates, labs, etc.  We took two steps to minimize batch effects.  First, we calculated
+z-scores using control samples from the same plate as the treated cells,
+thereby eliminating systematic biases between plates.  Second, we converted
+our z-scores to ranks, thereby eliminating any isotonic (rank invariant)
+shifts in z-scores that may arise between batches.  As we converted to rank
+space to eliminate isotonic batch effects, we proceeded with non-parametric
+approach to DEG identification.
 
-**TO DO:** Need to complete this section
+To identify genes exhibiting consistent differential expression, we performed
+a "rank of ranks" analysis.  First, the data was ranked sample-wise as
+described above. Second, the entire matrix of ranks (978 genes by 84 shRNA
+samples) was ranked and Kolmogorov Smirnov analysis was performed on the
+position of each occurrence of each gene within this vector of ranks.  The
+resulting analysis quantifies the extent to which the expression of each gene
+was consistently biased up or down relative to all other genes.
+
+```{r}
+ks <- function(x, ix) {
+  n <- length(x)
+  scores <- -rep(1/(n-length(ix)), n)
+  inc <- 1/length(ix)
+  
+  # need to account for ties
+  ix <- floor(x[ix])
+  scores[ix] <- 0
+  for(i in ix) {
+    scores[i] = scores[i] + inc
+  }
+  if(-min(cumsum(scores)) >= max(cumsum(scores))) {
+    return(0)
+  } else {
+    return(max(cumsum(scores)))
+  }
+}
+
+# we want the largest values to have the smallest rank 
+# (i.e. 1 = the largest score)
+ranks <- apply(-data, 2, rank)
+ranks <- rank(as.vector(ranks))
+genes <- rep(rownames(data), ncol(data))
+
+# for selecting down regulated genes, we invert the rankings
+ranks_d <- rank(-ranks)
+
+# now we quantify how biased (up or down regulated) each gene is across all 
+# instances
+up <- numeric(0)
+down <- numeric(0)
+for(g in unique(genes)) {
+  up <- c(up, ks(ranks, which(genes==g) ) )
+  down <- c(down, ks(ranks_d, which(genes==g) ) )
+}
+names(up) <- unique(genes)
+names(down) <- unique(genes)
+```
+
+We want to identify those genes that change in expression specifically in 
+response to our treatment of interest (in this case, treatment with short 
+hairpins targetting LMNA), as opposed to being a generic response to perturbation. 
+To do that, we bootstrap the distribution of scores for each gene based on 
+100,000 random sets of samples with the same class of treatment (short hairpins) 
+and the same size as our sample set of interest (84 samples). 
+
+```{r, eval = FALSE}
+library(parallel)
+library(doParallel)
+library(rredis)
+
+cores <- detectCores() - 1
+registerDoParallel(cores)
+
+# this is the same as above. Just copying here for clarity
+ks <- function(x, ix) {
+  n <- length(x)
+  scores <- -rep(1/(n-length(ix)), n)
+  inc <- 1/length(ix)
+  
+  # need to account for ties
+  ix <- floor(x[ix])
+  scores[ix] <- 0
+  for(i in ix) {
+    scores[i] = scores[i] + inc
+  }
+  if(-min(cumsum(scores)) >= max(cumsum(scores))) {
+    return(0)
+  } else {
+    return(max(cumsum(scores)))
+  }
+}
+
+metadata <- readRDS("./relinc/docs/metadata.rds")
+
+r <- foreach(i=1:100000, .packages="rredis") %dopar% {
+  print(i)
+  r_host = "localhost"
+  r_port = 6379
+
+  # keep data set size the same as our dataset of interest
+  rand_inst <- sample(which(metadata$pert_type == "trt_sh"), 84)
+  rand_keys <- metadata$distil_id[rand_inst]
+
+  redisConnect(host=r_host, port=r_port)
+  rand_data <- do.call(cbind, redisMGet(rand_keys))
+  redisClose()
+
+  ids <- rownames(rand_data)
+  rand_data <- apply(rand_data, 2, as.numeric)
+  rownames(rand_data) <- ids
+
+# invert sign so that largest values have smallest rank
+  ranks <- apply(-rand_data, 2, rank)
+  ranks <- rank(as.vector(ranks))
+  genes <- rep(rownames(rand_data), ncol(rand_data))
+
+  ranks_down <- rank(-ranks)
+  up_r <- numeric(0)
+  down_r <- numeric(0)
+
+  for(g in unique(genes)) {
+    up_r <- c(up_r, ks(ranks, which(genes==g) ) )
+    down_r <- c(down_r, ks(ranks_down, which(genes==g) ) )
+  }
+  return(list(up=up_r, down=down_r, gene_ids=rownames(rand_data)))
+}
+
+
+f1 <- function(x) { return(x$up)}
+f2 <- function(x) { return(x$down)}
+
+up <- do.call(cbind, lapply(r, f1))
+down <- do.call(cbind, lapply(r, f2))
+rownames(up) <- rownames(down) <- r[[1]]$gene_ids
+
+saveRDS(up, file="./relinc/docs/ks_dist_sh_84_up.rds")
+saveRDS(down, file="./relinc/docs/ks_dist_sh_84_down.rds")
+
+
+```
+
+Now with these bootstrapped estimates of the probability distribution of 
+ks scores under the current conditions of interest, we can convert our ks 
+scores for each gene in the LMNA perturbed instances to adjusted p-values 
+as follows.
+
+```{r, eval=FALSE}
+up <- readRDS("./relinc/docs/ks_dist_sh_84_up.rds")
+down <- readRDS("./relinc/docs/ks_dist_sh_84_down.rds")
+
+f1 <- function(x) { x - up }
+up_p <- apply(kspdf_up, 2, f1)
+up_p <- apply(up_p, 1, function(x) { sum(x >= 0)} )
+up_p <- (up_p + 1) / 100000  # constrain to >= 0.00001 as that is limit of 
+                             # detection
+up_p_adj <- p.adjust(up_p, "fdr")
+
+  
+f2 <- function(x) { x - down }
+down_p <- apply(kspdf_down, 2, f2)
+down_p <- apply(down_p, 1, function(x) { sum(x > 0)} )
+down_p <- (down_p + 1) / 100000  # constrain to >= 0.00001 as that is limit 
+                                 # of detection
+down_p_adj <<- p.adjust(down_p, "fdr")
+
+```
+
+Final gene selection for the LMNA signature can then be determined by setting 
+appropriate thresholds on the KS score and adjusted p-value for each gene. 
+For example, you might require that the KS score be greater than 0.2 and the 
+adjusted p-value be less than 0.001. This filtering would be done on both the 
+up and down scores to obtain the up-regulated and down-regulated genes for the 
+signature, respectively. 
 
 ## Drug scoring
 
@@ -221,7 +410,7 @@ down <- read.delim("av_stenosis_down.grp")[,1]
 down.eg <- unlist(mget(down, org.Hs.egSYMBOL2EG, ifnotfound=NA))
 ix <- which(down.eg %in% rn)
 down.eg <- down.eg[ix]
-writeLines(up.eg, "av_stenosis_up_eg.grp")
+writeLines(down.eg, "av_stenosis_down_eg.grp")
 
 ```
 
@@ -234,14 +423,11 @@ in subsequent analysis.
 
 ```{r}
 
-library(relinc)
 library(parallel)
 library(doParallel)
 library(rredis)
 
-rl <- Relincr$new(interactive = TRUE)
-
-metadata <- readRDS("relinc/vignettes/metadata.rds")
+metadata <- readRDS("relinc/docs/metadata.rds")
 metadata$pert_desc <- tolower(metadata$pert_desc)
 
 fda_ix <- which(metadata$is_fda & metadata$is_gold)
@@ -300,8 +486,8 @@ cores <- detectCores() - 1
 registerDoParallel(cores)
   
 r <- foreach(i=1:10000, .packages="rredis", .combine="cbind") %dopar% {  
-  up <- sample(rownames(data), 13)
-  down <- sample(rownames(data), 13)
+  up <- sample(rownames(data), 12)
+  down <- sample(rownames(data), 12)
   scores <- xsum(data, up, down)
   names(scores) <- metadata$pert_desc[fda_ix]
   
@@ -327,7 +513,7 @@ We then score each drug against the disease signature described above.
 ```{r}
 
 # NOTE: We swap the signatures because we want to REVERSE it, not mimic it
-up <- read.delim("docs/av_stenosis_down_eg.grp")[,1]
+up <- read.delim("./relinc/docs/av_stenosis_down_eg.grp")[,1]
 down <- read.delim("./relinc/docs/av_stenosis_up_eg.grp")[,1]
 scores <- xsum(data, up, down)
 names(scores) <- metadata$pert_desc[fda_ix]
@@ -339,19 +525,43 @@ for(s in unique(drugs)) {
 }
 names(spec) <- unique(drugs)
 
-specpdf <- readRDS("docs/xsum_raw_median_489_13_13.rds")
+specpdf <- readRDS("relinc/docs/xsum_raw_median_489_13_13.rds")
 ix <- match(names(spec), rownames(specpdf))
 specpdf <- specpdf[ix,]
 spec_p <- apply(sweep(specpdf, 1, spec, "-" ), 1, 
                 function(x) { sum(x>0)}) /  10001
 spec_p[which(spec < 0)] <- NA
-tt <- cbind(spec, spec_p)
+res <- cbind(spec, spec_p)
+
+drugs <- head(rownames(res[order(res[, 2]),]))
+drugs <- c("cyproheptadine", "fexofenadine")
+ix <- match(gg, rownames(data))
+data.sym <- data
+rownames(data.sym) <- mget(rownames(data), org.Hs.egSYMBOL)
+par(mfrow=c(3,2))
+for(d in drugs) {
+  ix.d <- which(names(scores) == d)
+  pheatmap(data.sym[ix, ix.d], 
+           #legend = FALSE, 
+           gaps_row = c(12),
+           cluster_rows = FALSE, 
+           cluster_cols = FALSE,
+           color = colorRampPalette(c("blue", "white", "red"))(11),
+           breaks=seq(-5, 5),
+           main = d)
+}
+
+
 write.table(tt, quote=FALSE, 
             sep="\t", 
             row.names=TRUE, 
             col.names=TRUE, 
             file = "relinc/docs/scores.tab")
 
+
+pheatmap(data[ix, ix.cyp], cluster_rows = FALSE, cluster_cols = FALSE,
+         color = colorRampPalette(c("blue", "white", "red"))(21),
+         breaks=seq(-10, 10))
 ```
 
 We can then perform some QA on these results to ensure the calculation was 
