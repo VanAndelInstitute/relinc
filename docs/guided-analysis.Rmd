@@ -1,11 +1,11 @@
 ---
 title: "Guided Analysis for Gene Signature Based Repositioning"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Guided Analysis}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+output:
+  rmdformats::robobook:
+    highlight: pygments
+    number_sections: true
+    css: custom.css
 ---
 
 ```{r setup, include = FALSE}
@@ -16,11 +16,13 @@ knitr::opts_chunk$set(
 )
 ```
 
+# Abstract
+
 Identifying drugs targeting specific gene perturbations is facilitated by 
 the `relinc` and `slinky` packages.  This document describes how to conduct 
 such an analysis.
 
-## Pre-requisites.
+# Pre-requisites.
 
 The relinc package is designed to expedite analysis by storing zscores 
 on a redis server.  Do not open your redis server to the world.  If working 
@@ -84,6 +86,7 @@ and install any that are missing.
 req <- c(
     "R6",
     "doMC",
+    "rmdformats",
     "foreach",
     "parallel",
     "doParallel",
@@ -140,7 +143,15 @@ wget ftp://ftp.ncbi.nlm.nih.gov/geo/series/GSE92nnn/GSE92742/suppl/GSE92742_Broa
 gunzip GSE92742_Broad_LINCS_Level3_INF_mlr12k_n1319138x12328.gctx.gz
 ```
 
-## Calculating zscores
+**Finally**, the worked examples below assume that the `relinc` github 
+repository is available in your current working directory so that it can 
+access data files provided in that repository. This is simply achieved from 
+a terminal session as follows:
+
+```{bash}
+git clone https://github.com/vanandelinstitute/relinc
+```
+# Calculating zscores
 
 Once your redis server is up and running, you can configure the client and 
 calculate and store robust zscores as follows.  The first command will prompt
@@ -181,7 +192,7 @@ with the actual path to the mount you created):
 ReadWriteDirectories=/mnt/data/redis/dump/directory
 ```
 
-## Gene scoring
+# Gene scoring
 
 The next step is to identify the gene signature for the gene perturbation of 
 analysis.  For this example, we derive our signature from instances in the 
@@ -268,6 +279,10 @@ for(g in unique(genes)) {
 }
 names(up) <- unique(genes)
 names(down) <- unique(genes)
+
+saveRDS(up, "./relinc/docs/lamin_sh_scores_up.rds")
+saveRDS(down, "./relinc/docs/lamin_sh_scores_down.rds")
+
 ```
 
 We want to identify those genes that change in expression specifically in 
@@ -313,7 +328,6 @@ ks <- function(x, ix) {
 metadata <- readRDS("./relinc/docs/metadata.rds")
 
 r <- foreach(i=1:100000, .packages="rredis") %dopar% {
-  print(i)
   r_host = "localhost"
   r_port = 6379
 
@@ -392,7 +406,7 @@ adjusted p-value be less than 0.001. This filtering would be done on both the
 up and down scores to obtain the up-regulated and down-regulated genes for the 
 signature, respectively. 
 
-## Drug scoring
+# Drug scoring
 
 For this example we use a signature of genes that are up and down regulated 
 in stenotic vs. normal atrioventricular valve tissue. The signatures are 

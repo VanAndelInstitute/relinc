@@ -7,3 +7,4 @@ config.r
 config.rds
 man/*
 !man/.gitignore
+docs/xsum_raw_median_489_13_13.rds
